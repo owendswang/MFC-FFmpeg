@@ -29,9 +29,8 @@ Steps as below:
 **If you only downloaded the release file, you still need those 'dll' files mentioned above. Just place them in the same folder with the 'exe' file.**
 
 ## Reference
-https://blog.csdn.net/qq_29350001/article/details/76432553
-
-https://blog.csdn.net/ciellee/category_10331352.html
+* https://blog.csdn.net/qq_29350001/article/details/76432553
+* https://blog.csdn.net/ciellee/category_10331352.html
 
 ## License
 This project is created by me and with the help of FFmepg and SDL2 shared libraries.
