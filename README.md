@@ -10,10 +10,10 @@ Due to licenses and copyrights, I wouldn't include those libraries in this proje
 ![Screenshot](res/Capture.jpg)
 
 ## Libraries Version
-VS2019 Windows SDL Version: 10.0 (latest installed version)
-VS2019 Platform Toolset: Visual Studio 2019 (v142)
-FFmpeg: ffmpeg-4.3.2-2021-02-02-full_build-shared
-SDL2: SDL2-devel-2.0.14-VC
+* VS2019 Windows SDL Version: 10.0 (latest installed version)
+* VS2019 Platform Toolset: Visual Studio 2019 (v142)
+* FFmpeg: ffmpeg-4.3.2-2021-02-02-full_build-shared
+* SDL2: SDL2-devel-2.0.14-VC
 
 ## Usage Instructions
 To open this project without any error, you have to add FFmpeg and SDL2 shared libraries.
