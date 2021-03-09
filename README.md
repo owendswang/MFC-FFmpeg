@@ -3,7 +3,7 @@ MFC dialog built with FFmpeg and SDL2 libraries.
 
 ## Description
 This project is created with Visual Studio 2019. This project is built with FFmpeg and SDL2 shared libraries.
-Because FFmpeg only provides 64-bit libraries, this project only support 64-bit platform.
+Because FFmpeg only provides 64-bit libraries, this project **only support 64-bit platform**.
 Due to licenses and copyrights, I wouldn't include those libraries in this project source files. But you could add them by yourself according to the instructions below.
 
 ## Screenshot
