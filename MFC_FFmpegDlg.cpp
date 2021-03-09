@@ -68,6 +68,9 @@ void CMFCFFmpegDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_EDIT_FILEPATH, m_url);
+	DDX_Control(pDX, IDC_SLIDER_PROGRESS, m_slider);
+	DDX_Control(pDX, IDC_STATIC_DURATION, m_duration);
+	DDX_Control(pDX, IDC_STATIC_PROGRESS, m_progress);
 }
 
 BEGIN_MESSAGE_MAP(CMFCFFmpegDlg, CDialogEx)
@@ -79,9 +82,8 @@ BEGIN_MESSAGE_MAP(CMFCFFmpegDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_PAUSE, &CMFCFFmpegDlg::OnBnClickedButtonPause)
 	ON_BN_CLICKED(IDC_BUTTON_STOP, &CMFCFFmpegDlg::OnBnClickedButtonStop)
 	ON_BN_CLICKED(IDC_BUTTON_BROWSE, &CMFCFFmpegDlg::OnBnClickedButtonBrowse)
-//	ON_EN_CHANGE(IDC_EDIT_FILEPATH, &CMFCFFmpegDlg::OnEnChangeEditFilepath)
 	ON_WM_DROPFILES()
-//	ON_STN_CLICKED(IDC_STATIC_DISPLAY, &CMFCFFmpegDlg::OnStnClickedStaticDisplay)
+	ON_WM_HSCROLL()
 END_MESSAGE_MAP()
 
 
@@ -121,9 +123,6 @@ BOOL CMFCFFmpegDlg::OnInitDialog()
 	GetWindowRect(&r);
 	dlgMinWidth = r.right - r.left;
 	dlgMinHeight = r.bottom - r.top;
-
-	// 支持拖拽文件
-	DragAcceptFiles(TRUE);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -209,11 +208,9 @@ int sfp_refresh_thread(void* opaque) {
 	thread_pause = 0;
 
 	while (thread_exit == 0) {
-		if (!thread_pause) {
-			SDL_Event event;
-			event.type = SFM_REFRESH_EVENT;
-			SDL_PushEvent(&event);
-		}
+		SDL_Event event;
+		event.type = SFM_REFRESH_EVENT;
+		SDL_PushEvent(&event);
 		SDL_Delay(30);
 	}
 	//Quit
@@ -243,6 +240,9 @@ int ffmpegplayer(LPVOID lpParam)
 	int video_frame_cout = 0, audio_frame_cout = 0;
 
 	char frame_type[][3] = { "N", "I", "P", "B", "S" ,"SI", "SP", "BI" };
+
+	CString time_length, time_progress;
+	int tns, thh, tmm, tss;
 
 
 	//------------SDL----------------
@@ -275,7 +275,13 @@ int ffmpegplayer(LPVOID lpParam)
 	}
 
 	// 3. 打印流信息
-	// av_dump_format(v_pFormatCtx, 0, Video_FileName, 0);
+	// av_dump_format(v_pFormatCtx, 0, filepath, 0);
+	tns = v_pFormatCtx->duration / 1000000;
+	thh = tns / 3600;
+	tmm = (tns % 3600) / 60;
+	tss = (tns % 60);
+	time_length.Format(L"/ %02d:%02d:%02d", thh, tmm, tss);
+	dlg->m_duration.SetWindowTextW(time_length);
 
 	memset(st_index, -1, sizeof(st_index));
 
@@ -303,6 +309,7 @@ int ffmpegplayer(LPVOID lpParam)
 	if (st_index[AVMEDIA_TYPE_VIDEO] >= 0) {
 		// 获得视频流
 		video_st = v_pFormatCtx->streams[st_index[AVMEDIA_TYPE_VIDEO]];
+		dlg->m_slider.SetRange(0, video_st->duration);
 		// 找到视频解码器
 		video_dec = avcodec_find_decoder(video_st->codecpar->codec_id);
 		// 初始化视频解码器上下文
@@ -335,15 +342,13 @@ int ffmpegplayer(LPVOID lpParam)
 
 	// 8. 分配AVFrame 和 AVPacket 内存
 	p_frame = av_frame_alloc();	// 初始化 AVFrame 帧内存
-
+	
 	// 申请 视频 buffer
 	p_frame_yuv = av_frame_alloc();
 	frame_out_buffer = (unsigned char*)av_malloc(av_image_get_buffer_size(AV_PIX_FMT_YUV420P, video_dec_ctx->width, video_dec_ctx->height, 1));
-	av_image_fill_arrays(p_frame_yuv->data, p_frame_yuv->linesize, frame_out_buffer,
-		AV_PIX_FMT_YUV420P, video_dec_ctx->width, video_dec_ctx->height, 1);
-
-	video_sws_ctx = sws_getContext(video_dec_ctx->width, video_dec_ctx->height, video_dec_ctx->pix_fmt,
-		video_dec_ctx->width, video_dec_ctx->height, AV_PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
+	av_image_fill_arrays(p_frame_yuv->data, p_frame_yuv->linesize, frame_out_buffer, AV_PIX_FMT_YUV420P, video_dec_ctx->width, video_dec_ctx->height, 1);
+	
+	video_sws_ctx = sws_getContext(video_dec_ctx->width, video_dec_ctx->height, video_dec_ctx->pix_fmt, video_dec_ctx->width, video_dec_ctx->height, AV_PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
 
 	// 初始化 AVPacket 包内存
 	p_pkt = av_packet_alloc();
@@ -396,63 +401,87 @@ int ffmpegplayer(LPVOID lpParam)
 		//Wait
 		SDL_WaitEvent(&event);
 		if (event.type == SFM_REFRESH_EVENT) {
-			// 读取一帧数据
-			if (av_read_frame(v_pFormatCtx, p_pkt) >= 0) {
-				if (p_pkt->stream_index == st_index[AVMEDIA_TYPE_VIDEO]) {
-					// 解码视频帧
-					ret = avcodec_send_packet(video_dec_ctx, p_pkt);
-					if (ret >= 0) {
-						ret = avcodec_receive_frame(video_dec_ctx, p_frame);
-						if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) {
-							ret = 0;
-							continue;
-						}
-						// 复制解码后的YUV数据到 p_frame_yuv 中
-						sws_scale(video_sws_ctx, (const unsigned char* const*)p_frame->data, p_frame->linesize, 0,
-							video_dec_ctx->height, p_frame_yuv->data, p_frame_yuv->linesize);
+			if (thread_pause) {
+				// 复制解码后的YUV数据到 p_frame_yuv 中
+				sws_scale(video_sws_ctx, (const unsigned char* const*)p_frame->data, p_frame->linesize, 0, video_dec_ctx->height, p_frame_yuv->data, p_frame_yuv->linesize);
 
-						// 更新 YUV数据到 Texture 中
-						SDL_UpdateTexture(sdlTexture, NULL, p_frame_yuv->data[0], p_frame_yuv->linesize[0]);
+				// 更新 YUV数据到 Texture 中
+				SDL_UpdateTexture(sdlTexture, NULL, p_frame_yuv->data[0], p_frame_yuv->linesize[0]);
 
-						// 清除 Rendder
-						SDL_RenderClear(sdlRenderer);
+				// 清除 Rendder
+				SDL_RenderClear(sdlRenderer);
 
-						// 复制Texture 到 renderer渲染器中
-						SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+				// 复制Texture 到 renderer渲染器中
+				SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
 
-						// 显示
-						SDL_RenderPresent(sdlRenderer);
-
-						TRACE("Decode 1 frame\n");
-					}
-					else {
-						AfxMessageBox(_T("Decode Error.\n"));
-						return -1;
-					}
-				}
-				else if (p_pkt->stream_index == st_index[AVMEDIA_TYPE_AUDIO]) {
-					// 解码音频帧
-					ret = avcodec_send_packet(audio_dec_ctx, p_pkt);
-					if (ret >= 0) {
-						ret = avcodec_receive_frame(audio_dec_ctx, p_frame);
-						if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN))
-						{
-							ret = 0;
-							continue;
-						}
-						//ret = (int)fwrite(p_frame->extended_data[0], 1, p_frame->nb_samples * av_get_bytes_per_sample(audio_dec_ctx->sample_fmt), audio_dst_filename); 
-
-						// cout << "音频：\t第 " << audio_frame_cout++ << " 帧   \tpkt_size = " << p_frame->pkt_size << "  \t\t\taudio_size   = " << p_frame->nb_samples * av_get_bytes_per_sample(audio_dec_ctx->sample_fmt) << endl;
-					}
-					else {
-						AfxMessageBox(_T("Decode Error.\n"));
-						return -1;
-					}
-				}
+				// 显示
+				SDL_RenderPresent(sdlRenderer);
 			}
 			else {
-				//Exit Thread
-				thread_exit = 1;
+				// 读取一帧数据
+				if (av_read_frame(v_pFormatCtx, p_pkt) >= 0) {
+					if (p_pkt->stream_index == st_index[AVMEDIA_TYPE_VIDEO]) {
+						// 解码视频帧
+						ret = avcodec_send_packet(video_dec_ctx, p_pkt);
+						if (ret >= 0) {
+							ret = avcodec_receive_frame(video_dec_ctx, p_frame);
+							dlg->m_slider.SetPos(p_frame->best_effort_timestamp);
+							tns = v_pFormatCtx->duration * p_frame->best_effort_timestamp / video_st->duration / 1000000;
+							thh = tns / 3600;
+							tmm = (tns % 3600) / 60;
+							tss = (tns % 60);
+							time_progress.Format(L"%02d:%02d:%02d", thh, tmm, tss);
+							dlg->m_progress.SetWindowTextW(time_progress);
+							if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) {
+								ret = 0;
+								continue;
+							}
+							// 复制解码后的YUV数据到 p_frame_yuv 中
+							sws_scale(video_sws_ctx, (const unsigned char* const*)p_frame->data, p_frame->linesize, 0, video_dec_ctx->height, p_frame_yuv->data, p_frame_yuv->linesize);
+
+							// 更新 YUV数据到 Texture 中
+							SDL_UpdateTexture(sdlTexture, NULL, p_frame_yuv->data[0], p_frame_yuv->linesize[0]);
+
+							// 清除 Rendder
+							SDL_RenderClear(sdlRenderer);
+
+							// 复制Texture 到 renderer渲染器中
+							SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+
+							// 显示
+							SDL_RenderPresent(sdlRenderer);
+
+							// TRACE("Decode 1 frame\n");
+						}
+						else {
+							AfxMessageBox(_T("Decode Error.\n"));
+							return -1;
+						}
+					}
+					else if (p_pkt->stream_index == st_index[AVMEDIA_TYPE_AUDIO]) {
+						// 解码音频帧
+						ret = avcodec_send_packet(audio_dec_ctx, p_pkt);
+						if (ret >= 0) {
+							ret = avcodec_receive_frame(audio_dec_ctx, p_frame);
+							if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN))
+							{
+								ret = 0;
+								continue;
+							}
+							//ret = (int)fwrite(p_frame->extended_data[0], 1, p_frame->nb_samples * av_get_bytes_per_sample(audio_dec_ctx->sample_fmt), audio_dst_filename); 
+
+							// cout << "音频：\t第 " << audio_frame_cout++ << " 帧   \tpkt_size = " << p_frame->pkt_size << "  \t\t\taudio_size   = " << p_frame->nb_samples * av_get_bytes_per_sample(audio_dec_ctx->sample_fmt) << endl;
+						}
+						else {
+							AfxMessageBox(_T("Decode Error.\n"));
+							return -1;
+						}
+					}
+				}
+				else {
+					//Exit Thread
+					thread_exit = 1;
+				}
 			}
 		}
 		else if (event.type == SDL_QUIT) {
@@ -486,8 +515,15 @@ int ffmpegplayer(LPVOID lpParam)
 UINT Thread_Play(LPVOID lpParam) {
 	CMFCFFmpegDlg* dlg = (CMFCFFmpegDlg*)lpParam;
 	dlg->GetDlgItem(IDC_BUTTON_STOP)->EnableWindow(TRUE);
+	dlg->GetDlgItem(IDC_BUTTON_PAUSE)->EnableWindow(TRUE);
+	dlg->m_slider.EnableWindow(TRUE);
 	ffmpegplayer(lpParam);
 	dlg->GetDlgItem(IDC_BUTTON_STOP)->EnableWindow(FALSE);
+	dlg->GetDlgItem(IDC_BUTTON_PAUSE)->EnableWindow(FALSE);
+	dlg->m_slider.SetPos(0);
+	dlg->m_slider.EnableWindow(FALSE);
+	dlg->m_progress.SetWindowTextW(L"00:00:00");
+	dlg->m_duration.SetWindowTextW(L"/ 00:00:00");
 	return 0;
 }
 
@@ -542,4 +578,26 @@ void CMFCFFmpegDlg::OnDropFiles(HDROP hDropInfo)
 	}
 
 	CDialogEx::OnDropFiles(hDropInfo);
+}
+
+
+BOOL CMFCFFmpegDlg::PreTranslateMessage(MSG* pMsg)
+{
+	// TODO: Add your specialized code here and/or call the base class
+	// 屏蔽Enter关闭窗口
+	// if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN)
+	// 	return TRUE;
+	// 屏蔽ESC关闭窗口
+	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_ESCAPE)
+		return TRUE;
+
+	return CDialogEx::PreTranslateMessage(pMsg);
+}
+
+
+void CMFCFFmpegDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// TODO: Add your message handler code here and/or call default
+
+	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
 }

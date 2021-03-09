@@ -42,4 +42,9 @@ public:
 	afx_msg void OnBnClickedButtonBrowse();
 	CEdit m_url;
 	afx_msg void OnDropFiles(HDROP hDropInfo);
+	CSliderCtrl m_slider;
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	CStatic m_duration;
+	CStatic m_progress;
 };
