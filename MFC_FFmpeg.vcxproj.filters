@@ -33,6 +33,12 @@
     <ClInclude Include="MFC_FFmpegDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ffplay.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -42,6 +48,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MFC_FFmpegDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ffplay.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -9,13 +9,32 @@
 #include "afxdialogex.h"
 
 extern "C" {
-#include "libavcodec/avcodec.h"
-#include "libavformat/avformat.h"
-#include "libswscale/swscale.h"
-#include "SDL2/SDL.h"
-#include "libavutil/pixfmt.h"
+#include "libavutil/avstring.h"
+#include "libavutil/eval.h"
+#include "libavutil/mathematics.h"
+#include "libavutil/pixdesc.h"
 #include "libavutil/imgutils.h"
+#include "libavutil/dict.h"
+#include "libavutil/fifo.h"
+#include "libavutil/parseutils.h"
+#include "libavutil/samplefmt.h"
+#include "libavutil/avassert.h"
+#include "libavutil/time.h"
+#include "libavutil/bprint.h"
+#include "libavformat/avformat.h"
+#include "libavdevice/avdevice.h"
+#include "libswscale/swscale.h"
+#include "libavutil/opt.h"
+#include "libavcodec/avfft.h"
+#include "libswresample/swresample.h"
+#include "libavfilter/avfilter.h"
+#include "libavfilter/buffersink.h"
+#include "libavfilter/buffersrc.h"
+#include "SDL2/SDL.h"
+#include "SDL2/SDL_thread.h"
 }
+
+#include "ffplay.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -71,6 +90,7 @@ void CMFCFFmpegDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_SLIDER_PROGRESS, m_slider);
 	DDX_Control(pDX, IDC_STATIC_DURATION, m_duration);
 	DDX_Control(pDX, IDC_STATIC_PROGRESS, m_progress);
+	DDX_Control(pDX, IDC_STATIC_DISPLAY, m_display);
 }
 
 BEGIN_MESSAGE_MAP(CMFCFFmpegDlg, CDialogEx)
@@ -517,7 +537,8 @@ UINT Thread_Play(LPVOID lpParam) {
 	dlg->GetDlgItem(IDC_BUTTON_STOP)->EnableWindow(TRUE);
 	dlg->GetDlgItem(IDC_BUTTON_PAUSE)->EnableWindow(TRUE);
 	dlg->m_slider.EnableWindow(TRUE);
-	ffmpegplayer(lpParam);
+	// ffmpegplayer(lpParam);]
+	ffplay(lpParam);
 	dlg->GetDlgItem(IDC_BUTTON_STOP)->EnableWindow(FALSE);
 	dlg->GetDlgItem(IDC_BUTTON_PAUSE)->EnableWindow(FALSE);
 	dlg->m_slider.SetPos(0);

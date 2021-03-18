@@ -47,4 +47,5 @@ public:
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	CStatic m_duration;
 	CStatic m_progress;
+	CStatic m_display;
 };

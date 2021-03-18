@@ -111,9 +111,9 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -190,6 +190,8 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="config.h" />
+    <ClInclude Include="ffplay.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MFC_FFmpeg.h" />
     <ClInclude Include="MFC_FFmpegDlg.h" />
@@ -198,6 +200,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ffplay.cpp" />
     <ClCompile Include="MFC_FFmpeg.cpp" />
     <ClCompile Include="MFC_FFmpegDlg.cpp" />
     <ClCompile Include="pch.cpp">
