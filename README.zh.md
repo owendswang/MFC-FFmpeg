@@ -12,7 +12,7 @@ English version: [README.md](README.md)
 ![截图](res/Capture.jpg)
 
 ## 库文件版本
-* VS2019 Windows SDL Version: 10.0 (latest installed version)
+* VS2019 Windows SDK Version: 10.0 (latest installed version)
 * VS2019 Platform Toolset: Visual Studio 2019 (v142)
 * FFmpeg: ffmpeg-4.3.2-2021-02-02-full_build-shared
 * SDL2: SDL2-devel-2.0.14-VC
